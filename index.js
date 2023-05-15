@@ -21,7 +21,7 @@ const setup = async () => {
 
   showPage(1, pokemon, selectedTypes);
 
-  
+
   //Click on type filter checkboxes-------------------------------------------
   
   $('body').on('click', '.typeFilter', async function (e) {
@@ -181,7 +181,7 @@ async function showPage(currentPage, pokemon, selectedTypes) {
   console.log("numCurrentPage: ", numCurrentPage);
 
   $('#numHeader').append(`
-    <h3>Showing ${numCurrentPage} of ${pokemon.length} pokemons</h3>
+    <h3>Showing ${numCurrentPage} of ${pokemon.length} Pokemons</h3>
     `);
 
 
