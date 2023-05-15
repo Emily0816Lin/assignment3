@@ -1,4 +1,6 @@
 var pokemon = [];
+var finalfilteredPokemon = [];
+var selectedTypes = [];
 
 const numPerPage = 10
 var numPages = 0;
@@ -15,27 +17,57 @@ const setup = async () => {
   console.log("type: ", type);
 
   numPages = Math.ceil(pokemon.length / numPerPage);
-  console.log("numPages: ", numPages);
+  console.log("numPages (pokemon): ", numPages);
 
-  showPage(1);
+  showPage(1, pokemon, selectedTypes);
 
+  
   //Click on type filter checkboxes-------------------------------------------
+  
   $('body').on('click', '.typeFilter', async function (e) {
 
-    // var selectedTypes = [];
+    var value = $(this).val();
 
-    // const selectedType = e.target.value;
+    if ($(this).is(':checked')) {
+        if (selectedTypes.indexOf(value) === -1) {
+          selectedTypes.push(value);
+        }
 
-    // if (e.target.checked) {
-    //   selectedTypes.push(selectedType);
-    // } else {
-    //   selectedTypes = selectedTypes.filter(type => type !== selectedType);
-    // }
-    // console.log("selectedTypes: ", selectedTypes);
+    } else {
+      var index = selectedTypes.indexOf(value);
+      if (index !== -1) {
+        selectedTypes.splice(index, 1);
+      }
+    }
 
-    // showPage(currentPage);
+    console.log("selectedTypes: ", selectedTypes);
 
 
+    const filteredPokemon = await Promise.all(pokemon.map(async (p) => {
+      const pokemonName = p.name;
+      const res = await axios.get(`https://pokeapi.co/api/v2/pokemon/${pokemonName}`);
+      const types = res.data.types.map((type) => type.type.name);
+
+      //logic "OR"
+      // if (types.some((t) => selectedTypes.includes(t))) {
+
+      //logic "AND"
+      if (selectedTypes.every((t) => types.includes(t))) {
+        return p;
+      }
+
+    }));
+
+    console.log("filteredPokemon: ", filteredPokemon);
+
+    finalfilteredPokemon = filteredPokemon.filter((value) => value !== undefined);
+    console.log("finalfilteredPokemon: ", finalfilteredPokemon);
+    console.log("(filter) finalfilteredPokemon.length: ", finalfilteredPokemon.length);
+
+    numPages = Math.ceil(finalfilteredPokemon.length / numPerPage);
+    console.log("numPages (filter): ", numPages);
+
+    showPage(currentPage, finalfilteredPokemon, selectedTypes);
   });
 
 
@@ -47,7 +79,7 @@ const setup = async () => {
     const res = await axios.get(`https://pokeapi.co/api/v2/pokemon/${pokemonName}`)
     // console.log("res.data: ", res.data);
     const types = res.data.types.map((type) => type.type.name)
-    // console.log("types: ", types);
+    console.log("types: ", types);
 
     //detail modal
     $('.modal-body').html(`
@@ -78,27 +110,31 @@ const setup = async () => {
     $('.modal-title').html(`
           <h2>${res.data.name.toUpperCase()}</h2>
           `)
-  })
+  });
 
   //Click on pagination buttons-------------------------------------------
   $('body').on('click', ".pageBtn", async function (e) {
     const pageNum = parseInt($(this).attr(`pageNum`));
     console.log("=================pageBtn clicked==================");
     console.log("pageNum: ", pageNum);
-    showPage(pageNum);
+
+    console.log("(pagination) finalfilteredPokemon.length: ", finalfilteredPokemon.length);
+    if (finalfilteredPokemon.length > 0) {
+      showPage(pageNum, finalfilteredPokemon, selectedTypes);
+    } else {
+      showPage(pageNum, pokemon, selectedTypes);
+    }
   });
 
 
   console.log("end of setup");
-}
+
+};
 
 
 
 
-
-
-
-async function showPage(currentPage) {
+async function showPage(currentPage, pokemon, selectedTypes) {
   if (currentPage < 1) {
     currentPage = 1;
   }
@@ -106,9 +142,8 @@ async function showPage(currentPage) {
     currentPage = numPages;
   }
 
-  console.log("showPage: ", currentPage);
-  console.log("start: ", (currentPage - 1) * numPerPage);
-  console.log("end: ", ((currentPage - 1) * numPerPage) + numPerPage);
+  console.log("currentPage: ", currentPage);
+  console.log("numPages (showpage): ", numPages);
   console.log("pokemon.length: ", pokemon.length);
 
   //Checkboxes-------------------------------------------
@@ -117,8 +152,12 @@ async function showPage(currentPage) {
   for (let i = 0; i < type.length; i++) {
     let res = await axios.get(`${type[i].url}`);
 
+    let isChecked = selectedTypes.includes(res.data.name);
+
+    // console.log("res.data.name: ", res.data.name);
+
     $('#filter').append(`
-      <input id="${res.data.name}" class="typeFilter" type="checkbox" name="type" value="${res.data.name}">
+      <input id="${res.data.name}" class="typeFilter" type="checkbox" name="type" value="${res.data.name}" ${isChecked ? 'checked' : ''}>
       <label htmlfor="${res.data.name}" for="${res.data.name}"> ${res.data.name} </label>
     `);
 
@@ -130,6 +169,14 @@ async function showPage(currentPage) {
 
   var start = (currentPage - 1) * numPerPage;
   var end = ((currentPage - 1) * numPerPage) + numPerPage;
+
+  if (currentPage === numPages) {
+    end = pokemon.length;
+  }
+
+  console.log("start: ", start);
+  console.log("end: ", end);
+
   var numCurrentPage = end - start;
   console.log("numCurrentPage: ", numCurrentPage);
 
@@ -162,7 +209,7 @@ async function showPage(currentPage) {
   var endI = Math.min(numPages, currentPage + Math.floor(numPageBtn / 2));
   console.log("startI: ", startI);
   console.log("endI: ", endI);
-  console.log("numPages: ", numPages);
+  console.log("numPages (showpage2): ", numPages);
   console.log("currentPage: ", currentPage);
   console.log("numPageBtn: ", numPageBtn);
 
